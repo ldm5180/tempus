@@ -1,0 +1,39 @@
+with "../tempus.gpr";
+
+--  Standalone example mains demonstrating tempus (and, in scan_trace, driving
+--  an sml state machine with tracing).  Mirrors sml-ada's example crate.
+project Example is
+
+   --  MODE selects a build profile:
+   --    release  -O3, tracing off  (Trace_Config from cfg/release)
+   --    debug    -O0, tracing on   (Trace_Config from cfg/debug)
+   type Mode_Type is ("release", "debug");
+   Mode : Mode_Type := external ("MODE", "release");
+
+   --  Per-mode object and exec dirs (obj/<mode>, bin/<mode>) so switching MODE
+   --  never reuses stale artifacts -- gprbuild's incremental build can miss
+   --  the cfg/release <-> cfg/debug source-dir swap, so without this a rebuild
+   --  after a switch would need a manual clean.
+   for Source_Dirs use ("src", "cfg/" & Mode);
+   for Object_Dir use "obj/" & Mode;
+   for Exec_Dir use "bin/" & Mode;
+   for Main use
+     ("parse_rfc3339.adb", "time_of_day.adb", "scan_trace.adb");
+
+   package Builder is
+      for Switches ("Ada") use ("-j0"); --  build on all cores
+   end Builder;
+
+   package Compiler is
+      Common := ("-g", "-gnata", "-gnatwa", "-gnatwe", "-gnat2022");
+
+      case Mode is
+         when "release" =>
+            for Default_Switches ("Ada") use Common & ("-O3");
+
+         when "debug" =>
+            for Default_Switches ("Ada") use Common & ("-O0");
+      end case;
+   end Compiler;
+
+end Example;
