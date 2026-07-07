@@ -1,4 +1,5 @@
 with Tempus.Calendar;
+with Tempus.Rfc3339.Scanner;
 
 package body Tempus.Rfc3339
   with SPARK_Mode
@@ -65,5 +66,58 @@ is
 
    function Image (T : Tempus.Epoch_Seconds) return Timestamp_String
    is (Format_Datetime (T) & "Z");
+
+   procedure Value (S : String; T : out Tempus.Epoch_Seconds; Ok : out Boolean)
+   is
+      subtype LLI is Long_Long_Integer;
+   begin
+      T := 0;
+      Ok := False;
+
+      --  A well-formed value is 20 to 64 characters ("...Z" up to a paranoid
+      --  cap that also bounds the scanner's work).  The bounded, 1-based copy
+      --  satisfies Scan's precondition.
+      if S'Length < 20 or else S'Length > 64 then
+         return;
+      end if;
+
+      declare
+         Buf : constant String (1 .. S'Length) := S;
+         F   : constant Scanner.Fields := Scanner.Scan (Buf);
+      begin
+         if not F.Valid then
+            return;
+         end if;
+
+         if not Calendar.Valid_Date
+                  (LLI (F.Year),
+                   LLI (F.Month),
+                   LLI (F.Day),
+                   LLI (F.Hour),
+                   LLI (F.Minute),
+                   LLI (F.Second))
+         then
+            return;
+         end if;
+
+         declare
+            Total : constant LLI :=
+              Calendar.To_Epoch
+                (LLI (F.Year),
+                 LLI (F.Month),
+                 LLI (F.Day),
+                 LLI (F.Hour),
+                 LLI (F.Minute),
+                 LLI (F.Second),
+                 LLI (F.Offset_Seconds));
+         begin
+            if Total < 0 or else Total > LLI (Tempus.Epoch_Seconds'Last) then
+               return;
+            end if;
+            T := Tempus.Epoch_Seconds (Total);
+            Ok := True;
+         end;
+      end;
+   end Value;
 
 end Tempus.Rfc3339;

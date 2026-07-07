@@ -6,6 +6,7 @@
 with Tempus;
 with Tempus.Calendar;
 with Tempus.Rfc3339;
+with Tempus.Rfc3339.Scanner;
 
 package Core_Closure_Proof
   with SPARK_Mode
