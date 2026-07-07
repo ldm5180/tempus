@@ -1,6 +1,7 @@
 with AUnit.Test_Cases;
 
 with Tempus_Calendar_Tests;
+with Tempus_Rfc3339_Tests;
 
 package body Tempus_Suite is
 
@@ -14,6 +15,7 @@ package body Tempus_Suite is
       end Add;
    begin
       Add (new Tempus_Calendar_Tests.Test);
+      Add (new Tempus_Rfc3339_Tests.Test);
       return Result;
    end Suite;
 

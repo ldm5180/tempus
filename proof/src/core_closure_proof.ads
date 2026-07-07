@@ -5,6 +5,7 @@
 --  generic only through a concrete instance).  Keep this list complete.
 with Tempus;
 with Tempus.Calendar;
+with Tempus.Rfc3339;
 
 package Core_Closure_Proof
   with SPARK_Mode
