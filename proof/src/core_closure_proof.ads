@@ -4,6 +4,7 @@
 --  harnesses beside it instantiate the generics (gnatprove reasons about a
 --  generic only through a concrete instance).  Keep this list complete.
 with Tempus;
+with Tempus.Calendar;
 
 package Core_Closure_Proof
   with SPARK_Mode
