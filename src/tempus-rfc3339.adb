@@ -8,7 +8,8 @@ is
    subtype Digit is Natural range 0 .. 9;
 
    function Digit_Char (D : Digit) return Character
-   is (Character'Val (Character'Pos ('0') + D));
+   is (Character'Val (Character'Pos ('0') + D))
+   with Static;
 
    subtype Datetime_String is String (1 .. 19);
    --  "YYYY-MM-DDThh:mm:ss": the date-time part Image wraps with a 'Z'.

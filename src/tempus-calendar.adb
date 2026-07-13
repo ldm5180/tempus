@@ -2,26 +2,6 @@ package body Tempus.Calendar
   with SPARK_Mode
 is
 
-   function Valid_Date (Year, Month, Day, Hour, Min, Sec : LLI) return Boolean
-   is
-      Is_Leap       : constant Boolean :=
-        (Year mod 4 = 0 and then Year mod 100 /= 0) or else Year mod 400 = 0;
-      Days_In_Month : constant LLI :=
-        (if Month = 2
-         then (if Is_Leap then 29 else 28)
-         elsif Month in 4 | 6 | 9 | 11
-         then 30
-         else 31);
-   begin
-      return
-        Year >= 1_970
-        and then Month in 1 .. 12
-        and then Day in 1 .. Days_In_Month
-        and then Hour <= 23
-        and then Min <= 59
-        and then Sec <= 59;
-   end Valid_Date;
-
    function To_Epoch
      (Year, Month, Day, Hour, Min, Sec, Offset_Seconds : LLI) return LLI
    is
