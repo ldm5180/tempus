@@ -34,25 +34,25 @@ is
 
       --  Digits are extracted with a final `mod 10` (a no-op for in-range
       --  values) so the proof only owes absence of runtime errors, not
-      --  nonlinear bounds on the calendar values.
-      procedure Put_2 (Position : Positive; Value : LLI)
-      with Pre => Position in 1 .. Result'Last - 1;
+      --  nonlinear bounds on the calendar values.  Width is a generic
+      --  formal (not a runtime parameter) so each instantiation below
+      --  compiles as its own fixed-width, fully unrollable loop.
+      generic
+         Width : Positive;
+      procedure Put_Digits (Position : Positive; Value : LLI)
+      with Pre => Position in 1 .. Result'Last - (Width - 1);
 
-      procedure Put_2 (Position : Positive; Value : LLI) is
+      procedure Put_Digits (Position : Positive; Value : LLI) is
+         V : LLI := Value;
       begin
-         Result (Position) := Digit_Char (Digit ((Value / 10) mod 10));
-         Result (Position + 1) := Digit_Char (Digit (Value mod 10));
-      end Put_2;
+         for I in reverse 0 .. Width - 1 loop
+            Result (Position + I) := Digit_Char (Digit (V mod 10));
+            V := V / 10;
+         end loop;
+      end Put_Digits;
 
-      procedure Put_4 (Position : Positive; Value : LLI)
-      with Pre => Position in 1 .. Result'Last - 3;
-
-      procedure Put_4 (Position : Positive; Value : LLI) is
-      begin
-         Result (Position) := Digit_Char (Digit ((Value / 1_000) mod 10));
-         Result (Position + 1) := Digit_Char (Digit ((Value / 100) mod 10));
-         Put_2 (Position + 2, Value);
-      end Put_4;
+      procedure Put_2 is new Put_Digits (Width => 2);
+      procedure Put_4 is new Put_Digits (Width => 4);
 
    begin
       Calendar.Civil_From_Days (Days, Year, Month, Day);
