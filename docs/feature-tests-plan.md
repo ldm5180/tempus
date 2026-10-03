@@ -1,6 +1,6 @@
 # Feature tests plan
 
-**Status:** planned 2026-10-03; F0-F2 done 2026-10-03, F3-F8 not started.
+**Status:** planned 2026-10-03; F0-F3 done 2026-10-03, F4-F8 not started.
 
 The crate's behavior, stated in Gherkin and run against the proven
 functions.  `*.feature` files under `tests/features/` say what the
@@ -391,6 +391,15 @@ region dispatch buys.
         | 2026-02-15T16:55:56+00:00           |
         | 2026-02-15T11:55:56.123456789-05:00 |
 
+    Scenario Outline: The leap day and the last day of a month parse
+      Then <stamp> parses to the instant <epoch>
+
+      Examples:
+        | stamp                | epoch      |
+        | 1970-01-01T00:00:00Z | 0          |
+        | 2024-02-29T00:00:00Z | 1709164800 |
+        | 2026-01-31T00:00:00Z | 1769817600 |
+
     Scenario Outline: A timestamp that is not one is refused
       Then <text> is refused
 
@@ -721,3 +730,18 @@ session scratchpad, GNAT 15.2.0, gprbuild 26.0.1, 2026-10-03:
   outcome.  Everything else was already at the crate's edge -- what a
   function returns or refuses -- and the cross-unit `instants`
   scenario is the model case.
+- **Implementation (2026-10-03, as the items landed):**
+  - F2 added no `Long_Read`/`Long_Count` twins: nothing read a
+    millisecond capture yet.  F3 added the first Long reader in the
+    shape it needed -- `Instant_Read`/`Instant`/`Refuse_Instant`, an
+    instant in `Tempus.Epoch_Seconds` -- and section 3.1's
+    `Epoch_Seconds_Given` is that shared guard.  An expected value a
+    check compares (`parses to the instant {int}`) needs no guard at
+    all: `Fabula.Check.Longs.Equal` takes the capture's read and fails
+    a bad one with the read's own reason.
+  - F3 gained a third outline, "The leap day and the last day of a
+    month parse": `Test_Value`'s three accepting vectors besides the
+    sample (the epoch, the leap day, January 31), which the draft
+    stated only as refusals' counterparts.  The space case's `{string}`
+    row beside the `{word}` row of one kind works, as section 5 item 4
+    expected.  The smoke child and feature went in F3's refactor.

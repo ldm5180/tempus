@@ -1,9 +1,10 @@
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 
 with Fabula.Check.Ints;
+with Fabula.Check.Longs;
 with Fabula.Numbers;
 
-with Tempus_Steps.Smoke;
+with Tempus_Steps.Timestamps;
 
 package body Tempus_Steps is
 
@@ -32,6 +33,29 @@ package body Tempus_Steps is
       end if;
    end Refuse_Count;
 
+   function Instant_Read (Ctx : Step_Context; N : Positive := 1) return Boolean
+   is (N <= Fabula.Args.Count (Ctx.A)
+       and then Fabula.Args.Long (Ctx.A, N).Ok
+       and then Fabula.Args.Long (Ctx.A, N).Value
+                in 0 .. Long_Long_Integer (Tempus.Epoch_Seconds'Last));
+
+   function Instant
+     (Ctx : Step_Context; N : Positive := 1) return Tempus.Epoch_Seconds
+   is (Tempus.Epoch_Seconds (Fabula.Args.Long (Ctx.A, N).Value));
+
+   procedure Refuse_Instant (Ctx : in out Step_Context; N : Positive := 1) is
+      Read : constant Fabula.Numbers.Long_Reads.Read :=
+        Fabula.Args.Long (Ctx.A, N);
+   begin
+      if not Read.Ok then
+         Fabula.Check.Longs.Fail_Read (Ctx.R, Read.Error, "the instant");
+      elsif Read.Value < 0 then
+         Fabula.Check.Fail_Step (Ctx.R, "an instant cannot be negative");
+      else
+         Fabula.Check.Fail_Step (Ctx.R, "past the last instant tempus holds");
+      end if;
+   end Refuse_Instant;
+
    ---------------------------------------------------------------------
    --  The features as orthogonal regions: every step is offered to each,
    --  and each takes only its own.
@@ -51,11 +75,11 @@ package body Tempus_Steps is
       Phase : Phase_Access;
    end record;
 
-   Smoke_Name : aliased constant String := "smoke";
+   Timestamps_Name : aliased constant String := "timestamps";
 
    --!format off
    Regions : constant array (Positive range <>) of Region :=
-     [(Smoke_Name'Access, Smoke.Offer'Access, Smoke.Reset'Access, Smoke.Phase'Access)];
+     [(Timestamps_Name'Access, Timestamps.Offer'Access, Timestamps.Reset'Access, Timestamps.Phase'Access)];
    --!format on
 
    --  Every region's state, for the step no region would take.
@@ -103,7 +127,7 @@ package body Tempus_Steps is
    begin
       case H is
          when Fresh_World =>
-            Ctx := (others => <>);
+            Ctx := (null record);
             for G of Regions loop
                G.Reset.all;
             end loop;
