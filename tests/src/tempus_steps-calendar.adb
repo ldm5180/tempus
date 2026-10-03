@@ -1,6 +1,5 @@
 with Ada.Characters.Handling;
 
-with Fabula.Check.Ints;
 with Fabula.Check.Longs;
 with Fabula.Numbers;
 
@@ -9,8 +8,6 @@ with Tempus.Calendar;
 with Tempus_Steps.Flows;
 
 package body Tempus_Steps.Calendar is
-
-   subtype LLI is Long_Long_Integer;
 
    --  One state: no calendar step depends on another.
    type State is (Ready);
@@ -57,23 +54,18 @@ package body Tempus_Steps.Calendar is
    is (Field_Name'Pos (F) + 1);
 
    function Field_Fits (Ctx : Step_Context; F : Field_Name) return Boolean
-   is (Field_At (F) <= Fabula.Args.Count (Ctx.A)
-       and then Fabula.Args.Int (Ctx.A, Field_At (F)).Ok
-       and then LLI (Fabula.Args.Int (Ctx.A, Field_At (F)).Value)
-                in Allowed (F).Low .. Allowed (F).High);
+   is (Reads_In (Ctx, Field_At (F), Allowed (F).Low, Allowed (F).High));
 
    function Fields_Fit (Ctx : Step_Context; Last : Field_Name) return Boolean
    is (for all F in Field_Name'First .. Last => Field_Fits (Ctx, F));
 
    --  Field F of a step whose fields fit.
    function Value (Ctx : Step_Context; F : Field_Name) return LLI
-   is (LLI (Fabula.Args.Int (Ctx.A, Field_At (F)).Value))
+   is (Number (Ctx, Field_At (F)))
    with Pre => Field_Fits (Ctx, F);
 
    function Days_Fit (Ctx : Step_Context) return Boolean
-   is (Fabula.Args.Long (Ctx.A, Days_Capture).Ok
-       and then Fabula.Args.Long (Ctx.A, Days_Capture).Value
-                in 0 .. Most_Days);
+   is (Reads_In (Ctx, Days_Capture, 0, Most_Days));
 
    function Evaluate
      (G : Guard_Kind; Ctx : Step_Context; Evt : Step_Kind) return Boolean is
@@ -128,8 +120,7 @@ package body Tempus_Steps.Calendar is
    is
       Y, M, D : LLI;
    begin
-      Tempus.Calendar.Civil_From_Days
-        (Fabula.Args.Long (Ctx.A, Days_Capture).Value, Y, M, D);
+      Tempus.Calendar.Civil_From_Days (Number (Ctx, Days_Capture), Y, M, D);
       Fabula.Check.Longs.Equal (Ctx.R, Y, After_Days (Ctx, Year));
       Fabula.Check.Longs.Equal (Ctx.R, M, After_Days (Ctx, Month));
       Fabula.Check.Longs.Equal (Ctx.R, D, After_Days (Ctx, Day));
@@ -140,21 +131,13 @@ package body Tempus_Steps.Calendar is
 
    --  Why field F does not fit: it does not read, or it is out of range.
    procedure Refuse_Fit (Ctx : in out Step_Context; F : Field_Name) is
-      Read : constant Fabula.Numbers.Integer_Reads.Read :=
-        Fabula.Args.Int (Ctx.A, Field_At (F));
    begin
-      if Read.Ok then
-         Fabula.Check.Fail_Step
-           (Ctx.R,
-            "the "
-            & Name_Of (F)
-            & " is outside "
-            & Fabula.Check.Long_Image (Allowed (F).Low)
-            & " .. "
-            & Fabula.Check.Long_Image (Allowed (F).High));
-      else
-         Fabula.Check.Ints.Fail_Read (Ctx.R, Read.Error, "the " & Name_Of (F));
-      end if;
+      Refuse_Range
+        (Ctx,
+         Field_At (F),
+         "the " & Name_Of (F),
+         Allowed (F).Low,
+         Allowed (F).High);
    end Refuse_Fit;
 
    --  The first field of the step that does not fit, and why.
@@ -193,8 +176,8 @@ package body Tempus_Steps.Calendar is
             Refuse_Field (Ctx, Fields_Of (Evt));
 
          when A_Refuse_Days    =>
-            Fabula.Check.Fail_Step
-              (Ctx.R, "a count of days is a number in 0 .. 3000000");
+            Refuse_Range
+              (Ctx, Days_Capture, "the count of days", 0, Most_Days);
       end case;
    end Execute;
 

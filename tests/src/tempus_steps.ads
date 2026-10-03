@@ -23,13 +23,30 @@ package Tempus_Steps is
       E_To_Epoch,
       E_Civil,
       E_Tod,
-      E_Tod_Refused);
+      E_Tod_Refused,
+      E_Epoch_Ms,
+      E_Agree,
+      --  An event no pattern names: the instants machine posts it to
+      --  itself after the readings whose results the next row's guard
+      --  reads.
+      E_Compared);
 
    type Hook_Kind is (Fresh_World);
 
-   --  What one scenario carries from step to step: nothing yet, since
-   --  every timestamp step names all its inputs.
-   type World is null record;
+   --  What a time of day and a timestamp read as, for the comparison
+   --  the step takes next.
+   type Readings is record
+      Ms       : Tempus.Day_Milliseconds := 0;
+      Tod_Ok   : Boolean := False;
+      Stamp    : Tempus.Epoch_Seconds := 0;
+      Stamp_Ok : Boolean := False;
+   end record;
+
+   --  What one step carries into the event it takes next.  Every step
+   --  names all its inputs, so nothing outlives a step.
+   type World is record
+      Read : Readings;
+   end record;
 
    --  One step as a machine sees it: the scenario, the step's arguments,
    --  frame and outcome, and the event an action asks to be taken next
@@ -45,30 +62,39 @@ package Tempus_Steps is
 
    procedure Then_Take (Ctx : in out Step_Context; Evt : Step_Kind);
 
-   --  Whether capture N reads as a whole number of zero or more: the
-   --  guard every counting step's rows share.
-   function Count_Read (Ctx : Step_Context; N : Positive := 1) return Boolean;
+   subtype LLI is Long_Long_Integer;
 
-   --  Capture N, which Count_Read said reads.
-   function Count (Ctx : Step_Context; N : Positive := 1) return Natural
-   with Pre => Count_Read (Ctx, N);
+   --  Whether capture N reads as a whole number in Low .. High: the guard
+   --  every bounded capture shares.  Read as a Long, since an instant
+   --  need not fit 32 bits.
+   function Reads_In
+     (Ctx : Step_Context; N : Positive; Low, High : LLI) return Boolean;
 
-   --  Fail the step for capture N: why it does not read as a count.
-   procedure Refuse_Count (Ctx : in out Step_Context; N : Positive := 1);
+   --  Capture N, which Reads_In said reads.
+   function Number (Ctx : Step_Context; N : Positive) return LLI
+   with
+     Pre =>
+       N <= Fabula.Args.Count (Ctx.A) and then Fabula.Args.Long (Ctx.A, N).Ok;
 
-   --  Whether capture N reads as an instant: whole seconds since the
-   --  epoch, inside Tempus.Epoch_Seconds.  Read as a Long, since an
-   --  instant need not fit 32 bits.
-   function Instant_Read
-     (Ctx : Step_Context; N : Positive := 1) return Boolean;
+   --  Fail the step for capture N, called What: it does not read, or it
+   --  is outside Low .. High.
+   procedure Refuse_Range
+     (Ctx : in out Step_Context; N : Positive; What : String; Low, High : LLI);
 
-   --  Capture N, which Instant_Read said reads.
-   function Instant
-     (Ctx : Step_Context; N : Positive := 1) return Tempus.Epoch_Seconds
-   with Pre => Instant_Read (Ctx, N);
+   --  Whether capture N is short enough for Tempus.Time_Of_Day.Parse.
+   function Tod_Readable (Ctx : Step_Context; N : Positive) return Boolean;
 
-   --  Fail the step for capture N: why it does not read as an instant.
-   procedure Refuse_Instant (Ctx : in out Step_Context; N : Positive := 1);
+   --  Capture N read as a time of day: its milliseconds, and whether it
+   --  read.
+   procedure Read_Tod
+     (Ctx : Step_Context;
+      N   : Positive;
+      Ms  : out Tempus.Day_Milliseconds;
+      Ok  : out Boolean)
+   with Pre => Tod_Readable (Ctx, N);
+
+   --  Fail the step: its time of day is longer than Parse reads.
+   procedure Refuse_Tod_Length (Ctx : in out Step_Context);
 
    package Steps is new
      Fabula.Registry
@@ -92,7 +118,11 @@ package Tempus_Steps is
                                                          >= E_Civil,
       Step ("{word} is {int} ms into the day")           >= E_Tod,
       Step ("the text {string} is not a time of day")    >= E_Tod_Refused,
-      Step ("{word} is not a time of day")               >= E_Tod_Refused];
+      Step ("{word} is not a time of day")               >= E_Tod_Refused,
+      Step ("the date {int} at {int} ms is the instant {int} ms")
+                                                         >= E_Epoch_Ms,
+      Step ("the date {int} at {word} is the same instant as {word}")
+                                                         >= E_Agree];
    --!format on
 
    Hook_Defs : constant Steps.Hook_Table := [Before >= Fresh_World];

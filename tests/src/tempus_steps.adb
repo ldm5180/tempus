@@ -1,10 +1,12 @@
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 
-with Fabula.Check.Ints;
 with Fabula.Check.Longs;
 with Fabula.Numbers;
 
+with Tempus.Time_Of_Day;
+
 with Tempus_Steps.Calendar;
+with Tempus_Steps.Instants;
 with Tempus_Steps.Time_Of_Day;
 with Tempus_Steps.Timestamps;
 
@@ -16,47 +18,61 @@ package body Tempus_Steps is
       Ctx.Next := Evt;
    end Then_Take;
 
-   function Count_Read (Ctx : Step_Context; N : Positive := 1) return Boolean
-   is (N <= Fabula.Args.Count (Ctx.A)
-       and then Fabula.Args.Int (Ctx.A, N).Ok
-       and then Fabula.Args.Int (Ctx.A, N).Value >= 0);
-
-   function Count (Ctx : Step_Context; N : Positive := 1) return Natural
-   is (Fabula.Args.Int (Ctx.A, N).Value);
-
-   procedure Refuse_Count (Ctx : in out Step_Context; N : Positive := 1) is
-      Read : constant Fabula.Numbers.Integer_Reads.Read :=
-        Fabula.Args.Int (Ctx.A, N);
-   begin
-      if Read.Ok then
-         Fabula.Check.Fail_Step (Ctx.R, "a count cannot be negative");
-      else
-         Fabula.Check.Ints.Fail_Read (Ctx.R, Read.Error);
-      end if;
-   end Refuse_Count;
-
-   function Instant_Read (Ctx : Step_Context; N : Positive := 1) return Boolean
+   function Reads_In
+     (Ctx : Step_Context; N : Positive; Low, High : LLI) return Boolean
    is (N <= Fabula.Args.Count (Ctx.A)
        and then Fabula.Args.Long (Ctx.A, N).Ok
-       and then Fabula.Args.Long (Ctx.A, N).Value
-                in 0 .. Long_Long_Integer (Tempus.Epoch_Seconds'Last));
+       and then Fabula.Args.Long (Ctx.A, N).Value in Low .. High);
 
-   function Instant
-     (Ctx : Step_Context; N : Positive := 1) return Tempus.Epoch_Seconds
-   is (Tempus.Epoch_Seconds (Fabula.Args.Long (Ctx.A, N).Value));
+   function Number (Ctx : Step_Context; N : Positive) return LLI
+   is (Fabula.Args.Long (Ctx.A, N).Value);
 
-   procedure Refuse_Instant (Ctx : in out Step_Context; N : Positive := 1) is
+   procedure Refuse_Range
+     (Ctx : in out Step_Context; N : Positive; What : String; Low, High : LLI)
+   is
       Read : constant Fabula.Numbers.Long_Reads.Read :=
         Fabula.Args.Long (Ctx.A, N);
    begin
-      if not Read.Ok then
-         Fabula.Check.Longs.Fail_Read (Ctx.R, Read.Error, "the instant");
-      elsif Read.Value < 0 then
-         Fabula.Check.Fail_Step (Ctx.R, "an instant cannot be negative");
+      if Read.Ok then
+         Fabula.Check.Fail_Step
+           (Ctx.R,
+            What
+            & " is outside "
+            & Fabula.Check.Long_Image (Low)
+            & " .. "
+            & Fabula.Check.Long_Image (High));
       else
-         Fabula.Check.Fail_Step (Ctx.R, "past the last instant tempus holds");
+         Fabula.Check.Longs.Fail_Read (Ctx.R, Read.Error, What);
       end if;
-   end Refuse_Instant;
+   end Refuse_Range;
+
+   --  The longest text Tempus.Time_Of_Day.Parse's precondition takes.
+   Longest_Tod : constant := 32;
+
+   function Tod_Readable (Ctx : Step_Context; N : Positive) return Boolean
+   is (N <= Fabula.Args.Count (Ctx.A)
+       and then Fabula.Args.Text (Ctx.A, N)'Length <= Longest_Tod);
+
+   procedure Read_Tod
+     (Ctx : Step_Context;
+      N   : Positive;
+      Ms  : out Tempus.Day_Milliseconds;
+      Ok  : out Boolean)
+   is
+      Written : constant String := Fabula.Args.Text (Ctx.A, N);
+      Text    : constant String (1 .. Written'Length) := Written;
+   begin
+      Tempus.Time_Of_Day.Parse (Text, Ms, Ok);
+   end Read_Tod;
+
+   procedure Refuse_Tod_Length (Ctx : in out Step_Context) is
+   begin
+      Fabula.Check.Fail_Step
+        (Ctx.R,
+         "a time of day is read from at most "
+         & Fabula.Check.Integer_Image (Longest_Tod)
+         & " characters");
+   end Refuse_Tod_Length;
 
    ---------------------------------------------------------------------
    --  The features as orthogonal regions: every step is offered to each,
@@ -80,12 +96,14 @@ package body Tempus_Steps is
    Timestamps_Name : aliased constant String := "timestamps";
    Calendar_Name   : aliased constant String := "calendar";
    Tod_Name        : aliased constant String := "time of day";
+   Instants_Name   : aliased constant String := "instants";
 
    --!format off
    Regions : constant array (Positive range <>) of Region :=
      [(Timestamps_Name'Access, Timestamps.Offer'Access,  Timestamps.Reset'Access,  Timestamps.Phase'Access),
       (Calendar_Name'Access,   Calendar.Offer'Access,    Calendar.Reset'Access,    Calendar.Phase'Access),
-      (Tod_Name'Access,        Time_Of_Day.Offer'Access, Time_Of_Day.Reset'Access, Time_Of_Day.Phase'Access)];
+      (Tod_Name'Access,        Time_Of_Day.Offer'Access, Time_Of_Day.Reset'Access, Time_Of_Day.Phase'Access),
+      (Instants_Name'Access,   Instants.Offer'Access,    Instants.Reset'Access,    Instants.Phase'Access)];
    --!format on
 
    --  Every region's state, for the step no region would take.
@@ -133,7 +151,7 @@ package body Tempus_Steps is
    begin
       case H is
          when Fresh_World =>
-            Ctx := (null record);
+            Ctx := (others => <>);
             for G of Regions loop
                G.Reset.all;
             end loop;

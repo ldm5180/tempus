@@ -1,7 +1,5 @@
 with Fabula.Check.Longs;
 
-with Tempus.Time_Of_Day;
-
 with Tempus_Steps.Flows;
 
 package body Tempus_Steps.Time_Of_Day is
@@ -17,9 +15,6 @@ package body Tempus_Steps.Time_Of_Day is
    Text_Capture : constant := 1;
    Ms_Capture   : constant := 2;
 
-   --  The longest text Parse's precondition takes.
-   Longest : constant := 32;
-
    --  The step's reading, as written.
    function Written (Ctx : Step_Context) return String
    is (Fabula.Args.Text (Ctx.A, Text_Capture));
@@ -32,22 +27,19 @@ package body Tempus_Steps.Time_Of_Day is
       return
         (case G is
            when Always   => True,
-           when Readable => Written (Ctx)'Length <= Longest);
+           when Readable => Tod_Readable (Ctx, Text_Capture));
    end Evaluate;
 
    ---------------------------------------------------------------------
    --  Actions.
    ---------------------------------------------------------------------
 
-   --  Parse the step's reading, numbered from 1 as Parse needs: its
-   --  milliseconds, and whether it read.
    procedure Read
      (Ctx : Step_Context; Ms : out Tempus.Day_Milliseconds; Ok : out Boolean)
-   with Pre => Written (Ctx)'Length <= Longest
+   with Pre => Tod_Readable (Ctx, Text_Capture)
    is
-      Text : constant String (1 .. Written (Ctx)'Length) := Written (Ctx);
    begin
-      Tempus.Time_Of_Day.Parse (Text, Ms, Ok);
+      Read_Tod (Ctx, Text_Capture, Ms, Ok);
    end Read;
 
    procedure Check_Read (Ctx : in out Step_Context) is
@@ -85,11 +77,7 @@ package body Tempus_Steps.Time_Of_Day is
             Check_Refused (Ctx);
 
          when A_Refuse_Long_Text =>
-            Fabula.Check.Fail_Step
-              (Ctx.R,
-               "a time of day is read from at most "
-               & Fabula.Check.Integer_Image (Longest)
-               & " characters");
+            Refuse_Tod_Length (Ctx);
       end case;
    end Execute;
 
