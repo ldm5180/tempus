@@ -1,6 +1,6 @@
 # Feature tests plan
 
-**Status:** planned 2026-10-03; F0-F4 done 2026-10-03, F5-F8 not started.
+**Status:** planned 2026-10-03; F0-F5 done 2026-10-03, F6-F8 not started.
 
 The crate's behavior, stated in Gherkin and run against the proven
 functions.  `*.feature` files under `tests/features/` say what the
@@ -752,3 +752,8 @@ session scratchpad, GNAT 15.2.0, gprbuild 26.0.1, 2026-10-03:
     0 .. 99", "the year is not a valid Integer: out of range").  The
     date patterns take the same table, so a date step cannot name a
     field `To_Epoch` could not take either.
+  - F5 needs no `Day_Ms_Given`: the milliseconds in `is {int} ms into
+    the day` are an expected value, which `Fabula.Check.Longs.Equal`
+    reads and refuses itself.  Its one guard is `Parse`'s own
+    precondition (`Readable`: at most 32 characters, sliced to start at
+    1), with a refusing fallback that names the limit.

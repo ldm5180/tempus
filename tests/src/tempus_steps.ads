@@ -21,7 +21,9 @@ package Tempus_Steps is
       E_Valid,
       E_Invalid,
       E_To_Epoch,
-      E_Civil);
+      E_Civil,
+      E_Tod,
+      E_Tod_Refused);
 
    type Hook_Kind is (Fresh_World);
 
@@ -87,7 +89,10 @@ package Tempus_Steps is
       Step ("{int}-{int}-{int} {int}:{int}:{int} at offset {int} "
             & "is the instant {int}")                    >= E_To_Epoch,
       Step ("day {int} since the epoch is {int}-{int}-{int}")
-                                                         >= E_Civil];
+                                                         >= E_Civil,
+      Step ("{word} is {int} ms into the day")           >= E_Tod,
+      Step ("the text {string} is not a time of day")    >= E_Tod_Refused,
+      Step ("{word} is not a time of day")               >= E_Tod_Refused];
    --!format on
 
    Hook_Defs : constant Steps.Hook_Table := [Before >= Fresh_World];
