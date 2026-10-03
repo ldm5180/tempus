@@ -1,9 +1,12 @@
 with "aunit";
+with "fabula";
 with "../tempus.gpr";
 
---  The AUnit suite for tempus.  Mirrors sml-ada's test crate: the MODE
---  external selects -O3/-O0 with per-mode object and exec dirs, so the suite
---  can be built and run in both optimization modes without a clean between.
+--  The AUnit suite for tempus, and beside it the Gherkin feature runner
+--  (tempus_features, a generic instantiation and so a spec).  Mirrors
+--  sml-ada's test crate: the MODE external selects -O3/-O0 with per-mode
+--  object and exec dirs, so the suite can be built and run in both
+--  optimization modes without a clean between.
 project Test_Tempus is
 
    type Mode_Type is ("release", "debug");
@@ -13,7 +16,7 @@ project Test_Tempus is
    for Object_Dir use "obj/" & Mode;
    for Exec_Dir use "bin/" & Mode;
    for Create_Missing_Dirs use "True";
-   for Main use ("test_runner.adb");
+   for Main use ("test_runner.adb", "tempus_features.ads");
 
    package Compiler is
       Common := ("-g", "-gnata", "-gnatwa", "-gnatwe", "-gnat2022");
