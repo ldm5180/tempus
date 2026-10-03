@@ -1,6 +1,72 @@
+with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
+
+with Fabula.Check.Ints;
+with Fabula.Numbers;
+
 with Tempus_Steps.Smoke;
 
 package body Tempus_Steps is
+
+   procedure Then_Take (Ctx : in out Step_Context; Evt : Step_Kind) is
+   begin
+      Ctx.Has_Next := True;
+      Ctx.Next := Evt;
+   end Then_Take;
+
+   function Count_Read (Ctx : Step_Context; N : Positive := 1) return Boolean
+   is (N <= Fabula.Args.Count (Ctx.A)
+       and then Fabula.Args.Int (Ctx.A, N).Ok
+       and then Fabula.Args.Int (Ctx.A, N).Value >= 0);
+
+   function Count (Ctx : Step_Context; N : Positive := 1) return Natural
+   is (Fabula.Args.Int (Ctx.A, N).Value);
+
+   procedure Refuse_Count (Ctx : in out Step_Context; N : Positive := 1) is
+      Read : constant Fabula.Numbers.Integer_Reads.Read :=
+        Fabula.Args.Int (Ctx.A, N);
+   begin
+      if Read.Ok then
+         Fabula.Check.Fail_Step (Ctx.R, "a count cannot be negative");
+      else
+         Fabula.Check.Ints.Fail_Read (Ctx.R, Read.Error);
+      end if;
+   end Refuse_Count;
+
+   ---------------------------------------------------------------------
+   --  The features as orthogonal regions: every step is offered to each,
+   --  and each takes only its own.
+   ---------------------------------------------------------------------
+
+   type Offer_Access is
+     access procedure
+       (Ctx : in out Step_Context; Evt : Step_Kind; Handled : out Boolean);
+   type Reset_Access is access procedure;
+   type Phase_Access is access function return String;
+   type Name_Access is access constant String;
+
+   type Region is record
+      Name  : Name_Access;
+      Offer : Offer_Access;
+      Reset : Reset_Access;
+      Phase : Phase_Access;
+   end record;
+
+   Smoke_Name : aliased constant String := "smoke";
+
+   --!format off
+   Regions : constant array (Positive range <>) of Region :=
+     [(Smoke_Name'Access, Smoke.Offer'Access, Smoke.Reset'Access, Smoke.Phase'Access)];
+   --!format on
+
+   --  Every region's state, for the step no region would take.
+   function Phases return String is
+      Text : Unbounded_String;
+   begin
+      for G of Regions loop
+         Append (Text, " " & G.Name.all & "=" & G.Phase.all);
+      end loop;
+      return To_String (Text);
+   end Phases;
 
    procedure Execute
      (S    : Step_Kind;
@@ -9,18 +75,21 @@ package body Tempus_Steps is
       Info : Fabula.Frames.Frame;
       R    : in out Fabula.Check.Outcome)
    is
-      Step    : Step_Context := (W => Ctx, A => A, Info => Info, R => R);
+      Step    : Step_Context :=
+        (W => Ctx, A => A, Info => Info, R => R, others => <>);
+      Taken   : Boolean := False;
       Handled : Boolean;
    begin
-      Smoke.Offer (Step, S, Handled);
+      for G of Regions loop
+         G.Offer (Step, S, Handled);
+         Taken := Taken or else Handled;
+      end loop;
       Ctx := Step.W;
       R := Step.R;
-      if not Handled then
+      if not Taken then
          Fabula.Check.Fail_Step
            (R,
-            S'Image
-            & " is not a step this scenario can take now: smoke="
-            & Smoke.Phase);
+            S'Image & " is not a step this scenario can take now:" & Phases);
       end if;
    end Execute;
 
@@ -30,10 +99,15 @@ package body Tempus_Steps is
       Info : Fabula.Frames.Frame;
       R    : in out Fabula.Check.Outcome)
    is
-      pragma Unreferenced (H, Info, R);
+      pragma Unreferenced (Info, R);
    begin
-      Ctx := (others => <>);
-      Smoke.Reset;
+      case H is
+         when Fresh_World =>
+            Ctx := (others => <>);
+            for G of Regions loop
+               G.Reset.all;
+            end loop;
+      end case;
    end Run_Hook;
 
 end Tempus_Steps;
