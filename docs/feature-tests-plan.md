@@ -1,6 +1,6 @@
 # Feature tests plan
 
-**Status:** planned 2026-10-03; F0-F1 done 2026-10-03, F2-F8 not started.
+**Status:** planned 2026-10-03; F0-F2 done 2026-10-03, F3-F8 not started.
 
 The crate's behavior, stated in Gherkin and run against the proven
 functions.  `*.feature` files under `tests/features/` say what the

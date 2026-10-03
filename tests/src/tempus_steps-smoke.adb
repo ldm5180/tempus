@@ -1,8 +1,6 @@
 with Fabula.Check.Ints;
-with Fabula.Numbers;
 
-with Sml.Machines.Operators;
-with Sml.Simple_Machines;
+with Tempus_Steps.Flows;
 
 package body Tempus_Steps.Smoke is
 
@@ -13,11 +11,6 @@ package body Tempus_Steps.Smoke is
 
    type Action_Kind is (A_Nothing, A_Keep, A_Add, A_Check, A_Refuse_Count);
 
-   First_Capture : constant := 1;
-
-   function Read (Ctx : Step_Context) return Fabula.Numbers.Integer_Reads.Read
-   is (Fabula.Args.Int (Ctx.A, First_Capture));
-
    function Evaluate
      (G : Guard_Kind; Ctx : Step_Context; Evt : Step_Kind) return Boolean
    is
@@ -26,17 +19,8 @@ package body Tempus_Steps.Smoke is
       return
         (case G is
            when Always      => True,
-           when Count_Given => Read (Ctx).Ok and then Read (Ctx).Value >= 0);
+           when Count_Given => Count_Read (Ctx));
    end Evaluate;
-
-   procedure Refuse_Count (Ctx : in out Step_Context) is
-   begin
-      if Read (Ctx).Ok then
-         Fabula.Check.Fail_Step (Ctx.R, "a count cannot be negative");
-      else
-         Fabula.Check.Ints.Fail_Read (Ctx.R, Read (Ctx).Error);
-      end if;
-   end Refuse_Count;
 
    procedure Execute
      (A : Action_Kind; Ctx : in out Step_Context; Evt : Step_Kind)
@@ -48,34 +32,32 @@ package body Tempus_Steps.Smoke is
             null;
 
          when A_Keep         =>
-            Ctx.W.Count := Read (Ctx).Value;
+            Ctx.W.Count := Count (Ctx);
 
          when A_Add          =>
-            Ctx.W.Count := Ctx.W.Count + Read (Ctx).Value;
+            Ctx.W.Count := Ctx.W.Count + Count (Ctx);
 
          when A_Check        =>
             Fabula.Check.Ints.Equal
-              (Ctx.R, Ctx.W.Count, Read (Ctx).Value, "the count");
+              (Ctx.R, Ctx.W.Count, Fabula.Args.Int (Ctx.A, 1), "the count");
 
          when A_Refuse_Count =>
             Refuse_Count (Ctx);
       end case;
    end Execute;
 
-   package Machines is new
-     Sml.Simple_Machines
+   package Flow is new
+     Tempus_Steps.Flows
        (State       => State,
-        Event       => Step_Kind,
-        Context     => Step_Context,
         Guard_Kind  => Guard_Kind,
         Action_Kind => Action_Kind,
         Evaluate    => Evaluate,
-        Execute     => Execute);
+        Execute     => Execute,
+        Always      => Always,
+        Nothing     => A_Nothing);
 
-   package Op is new Machines.Engine.Operators (Always, A_Nothing);
-
-   use Machines;
-   use Op;
+   use Flow.Machines;
+   use Flow.Op;
 
    Keep_Count  : constant Ev := (Kind => E_Keep_Count);
    Add_Count   : constant Ev := (Kind => E_Add_Count);
@@ -93,12 +75,9 @@ package body Tempus_Steps.Smoke is
    Current : State := Empty;
 
    procedure Offer
-     (Ctx : in out Step_Context; Evt : Step_Kind; Handled : out Boolean)
-   is
-      M : Machine := Make (Table, Initial => Current);
+     (Ctx : in out Step_Context; Evt : Step_Kind; Handled : out Boolean) is
    begin
-      Engine.Process_Event (M, Ctx, Evt, Handled);
-      Current := State_Of (M);
+      Flow.Take (Table, Current, Ctx, Evt, Handled);
    end Offer;
 
    procedure Reset is
