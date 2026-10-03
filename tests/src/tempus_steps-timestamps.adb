@@ -26,6 +26,15 @@ package body Tempus_Steps.Timestamps is
    First_Capture  : constant := 1;
    Second_Capture : constant := 2;
 
+   --  The step's instant, its first capture: whole seconds since the
+   --  epoch, inside Tempus.Epoch_Seconds.
+   function Instant_Read (Ctx : Step_Context) return Boolean
+   is (Reads_In (Ctx, First_Capture, 0, LLI (Tempus.Epoch_Seconds'Last)));
+
+   function Instant (Ctx : Step_Context) return Tempus.Epoch_Seconds
+   is (Tempus.Epoch_Seconds (Number (Ctx, First_Capture)))
+   with Pre => Instant_Read (Ctx);
+
    function Evaluate
      (G : Guard_Kind; Ctx : Step_Context; Evt : Step_Kind) return Boolean
    is
@@ -117,7 +126,12 @@ package body Tempus_Steps.Timestamps is
             Fabula.Check.Fail_Step (Ctx.R, "past the formattable bound");
 
          when A_Refuse_Instant       =>
-            Refuse_Instant (Ctx);
+            Refuse_Range
+              (Ctx,
+               First_Capture,
+               "the instant",
+               0,
+               LLI (Tempus.Epoch_Seconds'Last));
       end case;
    end Execute;
 

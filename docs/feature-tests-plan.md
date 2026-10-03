@@ -1,6 +1,6 @@
 # Feature tests plan
 
-**Status:** planned 2026-10-03; F0-F5 done 2026-10-03, F6-F8 not started.
+**Status:** planned 2026-10-03; F0-F6 done 2026-10-03, F7-F8 not started.
 
 The crate's behavior, stated in Gherkin and run against the proven
 functions.  `*.feature` files under `tests/features/` say what the
@@ -555,7 +555,7 @@ region dispatch buys.
         | 20240229 | 0        | 1709164800000 |
         | 20260215 | 60956000 | 1771174556000 |
 
-    Scenario Outline: Three units agree on one instant
+    Scenario Outline: A date, a time of day and a timestamp agree on one instant
       Then the date <date> at <tod> is the same instant as <stamp>
 
       Examples:
@@ -757,3 +757,16 @@ session scratchpad, GNAT 15.2.0, gprbuild 26.0.1, 2026-10-03:
     reads and refuses itself.  Its one guard is `Parse`'s own
     precondition (`Readable`: at most 32 characters, sliced to start at
     1), with a refusing fallback that names the limit.
+  - F6's machine is `Ready`/`Parsed`, not `Ready`/`Agreed`: the
+    agreement step reads both texts and moves to `Parsed`, and the
+    `E_Compared` follow-up's three rows (`Both_Parsed`, `Tod_Parsed`,
+    fallback) compare or name the reading that was refused, returning to
+    `Ready` so a second agreement in one scenario works.  The outline
+    title "Three units agree on one instant" counted units -- an
+    implementation word -- and now names the three things a consumer
+    holds.  Its refactor pass found three copies of "read a bounded
+    number, refuse it by name" (the instant, the civil fields, the days)
+    and two of "read a time of day" (time-of-day and instants): the
+    registry now has `Reads_In`/`Number`/`Refuse_Range` and
+    `Tod_Readable`/`Read_Tod`/`Refuse_Tod_Length`, every machine reads
+    through them, and the count helpers no step used are gone.
