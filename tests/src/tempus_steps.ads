@@ -13,7 +13,15 @@ package Tempus_Steps is
 
    --  The steps, grouped by the feature that reads them.  Each is an
    --  event of that feature's state machine, in its own child package.
-   type Step_Kind is (E_Image, E_Parse, E_Refuse, E_Round_Trip);
+   type Step_Kind is
+     (E_Image,
+      E_Parse,
+      E_Refuse,
+      E_Round_Trip,
+      E_Valid,
+      E_Invalid,
+      E_To_Epoch,
+      E_Civil);
 
    type Hook_Kind is (Fresh_World);
 
@@ -73,7 +81,13 @@ package Tempus_Steps is
       Step ("the instant {int} formats and parses back") >= E_Round_Trip,
       Step ("{word} parses to the instant {int}")        >= E_Parse,
       Step ("the text {string} is refused")              >= E_Refuse,
-      Step ("{word} is refused")                         >= E_Refuse];
+      Step ("{word} is refused")                         >= E_Refuse,
+      Step ("{int}-{int}-{int} is a valid date")         >= E_Valid,
+      Step ("{int}-{int}-{int} is not a valid date")     >= E_Invalid,
+      Step ("{int}-{int}-{int} {int}:{int}:{int} at offset {int} "
+            & "is the instant {int}")                    >= E_To_Epoch,
+      Step ("day {int} since the epoch is {int}-{int}-{int}")
+                                                         >= E_Civil];
    --!format on
 
    Hook_Defs : constant Steps.Hook_Table := [Before >= Fresh_World];

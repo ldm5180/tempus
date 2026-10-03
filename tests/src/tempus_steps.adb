@@ -4,6 +4,7 @@ with Fabula.Check.Ints;
 with Fabula.Check.Longs;
 with Fabula.Numbers;
 
+with Tempus_Steps.Calendar;
 with Tempus_Steps.Timestamps;
 
 package body Tempus_Steps is
@@ -76,10 +77,12 @@ package body Tempus_Steps is
    end record;
 
    Timestamps_Name : aliased constant String := "timestamps";
+   Calendar_Name   : aliased constant String := "calendar";
 
    --!format off
    Regions : constant array (Positive range <>) of Region :=
-     [(Timestamps_Name'Access, Timestamps.Offer'Access, Timestamps.Reset'Access, Timestamps.Phase'Access)];
+     [(Timestamps_Name'Access, Timestamps.Offer'Access, Timestamps.Reset'Access, Timestamps.Phase'Access),
+      (Calendar_Name'Access,   Calendar.Offer'Access,   Calendar.Reset'Access,   Calendar.Phase'Access)];
    --!format on
 
    --  Every region's state, for the step no region would take.
