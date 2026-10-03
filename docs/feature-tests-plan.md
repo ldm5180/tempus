@@ -1,6 +1,6 @@
 # Feature tests plan
 
-**Status:** planned 2026-10-03; F0-F7 done 2026-10-03, F8 not started.
+**Status:** implemented 2026-10-03 (F0-F8); the second wave (section 6) is not started.
 
 The crate's behavior, stated in Gherkin and run against the proven
 functions.  `*.feature` files under `tests/features/` say what the

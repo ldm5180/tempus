@@ -17,6 +17,15 @@ RFC3339 parser (`Tempus.Rfc3339.Value`) is backed by an
 
 - `make build`   — build the library (`alr build`)
 - `make test`    — AUnit suite in BOTH modes (release -O3, debug -O0), offline
+- `make features` — the Gherkin features under `tests/features/` in both
+  modes, on fabula, printing the report as it goes (in colour on a
+  terminal); checks the summary line, since fabula exits 0 for a
+  missing path.  `alr test` runs them too
+- `make features-report` — the living documentation: the features with
+  `--report-json`, rendered by multiple-cucumber-html-reporter
+  (`tools/features-report`, node) into `obj/features-report/html`.  CI
+  keeps it with every run and publishes it from main to
+  https://ldm5180.github.io/tempus/
 - `make prove`   — SPARK proof, `--checks-as-errors=on`; must exit 0
 - `make format`  — `gnatformat --check` over all committed Ada sources
 - `make example` — build the examples both ways
@@ -28,7 +37,14 @@ RFC3339 parser (`Tempus.Rfc3339.Value`) is backed by an
 - `src/`   — the library (pure SPARK; a unit may `with` only other `Tempus.*`
   units and `Sml.*` — never `Ada.Calendar`, files, or sockets).
 - `tests/` — AUnit suite (`test_tempus.gpr`, driver `test_runner.adb`), fully
-  offline (pure functions, no clock).
+  offline (pure functions, no clock), and the features:
+  `tests/features/*.feature` run by `tempus_features.ads` (Fabula.Main
+  over `Tempus_Steps`).  Each feature's steps are an sml machine in its
+  own child -- steps are its events, the conditions that chose a body
+  its guards, the bodies its actions -- driven by `Tempus_Steps.Flows`;
+  the registry offers every step to each feature as a region, and a
+  step none takes fails, naming every region's state.  A feature's
+  world is only the inputs its steps name: no clock, no IO.
 - `proof/` — gnatprove harness (`proof.gpr`; sources `../src` directly and
   withs only `sml`, keeping foreign code out of the proof tree).
 - `example/` — standalone demo mains (sml + tempus); example tracing is swapped
@@ -57,6 +73,16 @@ RFC3339 parser (`Tempus.Rfc3339.Value`) is backed by an
 - One `<unit>_tests.ads/.adb` pair per library unit under `tests/src/`,
   registered in `tempus_suite.adb`. Test routines use `AUnit.Assertions.Assert`
   and are wired via `Register_Routine`.
+- Tests are layers -- guidance for judgement, not a mechanical rule.
+  A unit test tests a single function, or at most a simple interaction
+  between two, and the unit tests always cover the function they test
+  completely.  A feature (BDD) tests the larger interactions that form
+  a higher-level, conceptual feature, in a consumer's words, one fact
+  per step, and checks only what a consumer could observe -- what a
+  function returns or refuses, never how.  Duplication across the
+  layers is fine: a test is removed only when it is an integration test
+  a scenario fully supplants, and every tempus test exercises one
+  function, so none has been.
 
 ## Programming best practices
 
