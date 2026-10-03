@@ -1,6 +1,6 @@
 # Feature tests plan
 
-**Status:** planned 2026-10-03; F0-F3 done 2026-10-03, F4-F8 not started.
+**Status:** planned 2026-10-03; F0-F4 done 2026-10-03, F5-F8 not started.
 
 The crate's behavior, stated in Gherkin and run against the proven
 functions.  `*.feature` files under `tests/features/` say what the
@@ -745,3 +745,10 @@ session scratchpad, GNAT 15.2.0, gprbuild 26.0.1, 2026-10-03:
     stated only as refusals' counterparts.  The space case's `{string}`
     row beside the `{word}` row of one kind works, as section 5 item 4
     expected.  The smoke child and feature went in F3's refactor.
+  - F4's guards are section 3.1's `Field_Ranges` and `Days_In_Range`;
+    "`Count_Given` (per field)" became part of `Field_Ranges`, which
+    reads each civil field against `To_Epoch`'s precondition table and
+    refuses the first that does not fit by name ("the month is outside
+    0 .. 99", "the year is not a valid Integer: out of range").  The
+    date patterns take the same table, so a date step cannot name a
+    field `To_Epoch` could not take either.
