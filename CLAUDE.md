@@ -26,7 +26,15 @@ RFC3339 parser (`Tempus.Rfc3339.Value`) is backed by an
   (`tools/features-report`, node) into `obj/features-report/html`.  CI
   keeps it with every run and publishes it from main to
   https://ldm5180.github.io/tempus/
-- `make prove`   — SPARK proof, `--checks-as-errors=on`; must exit 0
+- `make prove`   — SPARK proof, `--checks-as-errors=on`; must exit 0.
+  Stopped after `PROVE_TIMEOUT` (30m).  It first runs
+  `tools/phase1_guard.py`, which drops the phase-1 ALIs when a
+  `gnatprove -u` left them disagreeing on a source's checksum (the state
+  in which gnatprove's gprbuild spins forever), and holds
+  `proof/obj/.prove.lock` across the guard and gnatprove, since two
+  gnatprove runs on one tree corrupt each other; a manual `gnatprove -u`
+  takes the same lock: `flock proof/obj/.prove.lock alr exec -- gnatprove
+  -P proof/proof.gpr -u <unit> ...`
 - `make format`  — `gnatformat --check` over all committed Ada sources
 - `make example` — build the examples both ways
 - `make run` / `make run-trace` — run the release / debug (traced) example
